@@ -5,11 +5,13 @@ import (
 	"log"
 	"net/http"
 	"os"
+
+	"github.com/UnitVectorY-Labs/kube-oidc-gateway/internal/gateway"
 )
 
 func main() {
 	// Load configuration
-	config := LoadConfig()
+	config := gateway.LoadConfig()
 
 	// Set up logging
 	log.SetFlags(log.LstdFlags | log.LUTC)
@@ -19,7 +21,7 @@ func main() {
 		config.CacheTTLSeconds, config.PrettyPrintJSON)
 
 	// Create application
-	app, err := NewApp(config)
+	app, err := gateway.NewApp(config)
 	if err != nil {
 		log.Printf("Failed to initialize application: %v", err)
 		os.Exit(1)
