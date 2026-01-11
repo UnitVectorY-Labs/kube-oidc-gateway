@@ -12,7 +12,7 @@ func TestHandlers(t *testing.T) {
 		CacheTTLSeconds: 60,
 		PrettyPrintJSON: true,
 	}
-	
+
 	app := &App{
 		config:    config,
 		cache:     NewCache(config.GetCacheTTL()),
@@ -22,9 +22,9 @@ func TestHandlers(t *testing.T) {
 	t.Run("HandleHealthz returns 200", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/healthz", nil)
 		w := httptest.NewRecorder()
-		
+
 		app.HandleHealthz(w, req)
-		
+
 		if w.Code != http.StatusOK {
 			t.Errorf("Expected status 200, got %d", w.Code)
 		}
@@ -36,9 +36,9 @@ func TestHandlers(t *testing.T) {
 	t.Run("HandleHealthz rejects non-GET", func(t *testing.T) {
 		req := httptest.NewRequest("POST", "/healthz", nil)
 		w := httptest.NewRecorder()
-		
+
 		app.HandleHealthz(w, req)
-		
+
 		if w.Code != http.StatusMethodNotAllowed {
 			t.Errorf("Expected status 405, got %d", w.Code)
 		}
@@ -47,9 +47,9 @@ func TestHandlers(t *testing.T) {
 	t.Run("HandleReadyz returns 200 when ready", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/readyz", nil)
 		w := httptest.NewRecorder()
-		
+
 		app.HandleReadyz(w, req)
-		
+
 		if w.Code != http.StatusOK {
 			t.Errorf("Expected status 200, got %d", w.Code)
 		}
@@ -61,12 +61,12 @@ func TestHandlers(t *testing.T) {
 			cache:     NewCache(config.GetCacheTTL()),
 			readyOnce: false, // Not ready
 		}
-		
+
 		req := httptest.NewRequest("GET", "/readyz", nil)
 		w := httptest.NewRecorder()
-		
+
 		notReadyApp.HandleReadyz(w, req)
-		
+
 		if w.Code != http.StatusServiceUnavailable {
 			t.Errorf("Expected status 503, got %d", w.Code)
 		}
@@ -75,9 +75,9 @@ func TestHandlers(t *testing.T) {
 	t.Run("HandleNotFound returns 404", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/unknown-path", nil)
 		w := httptest.NewRecorder()
-		
+
 		app.HandleNotFound(w, req)
-		
+
 		if w.Code != http.StatusNotFound {
 			t.Errorf("Expected status 404, got %d", w.Code)
 		}
@@ -92,14 +92,14 @@ func TestHandlers(t *testing.T) {
 			{"Discovery", app.HandleOIDCDiscovery, "/.well-known/openid-configuration"},
 			{"JWKS", app.HandleJWKS, "/openid/v1/jwks"},
 		}
-		
+
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				req := httptest.NewRequest("POST", tt.path, nil)
 				w := httptest.NewRecorder()
-				
+
 				tt.handler(w, req)
-				
+
 				if w.Code != http.StatusMethodNotAllowed {
 					t.Errorf("Expected status 405 for POST, got %d", w.Code)
 				}
@@ -114,22 +114,22 @@ func TestCacheIntegration(t *testing.T) {
 			CacheTTLSeconds: 60,
 			PrettyPrintJSON: false,
 		}
-		
+
 		app := &App{
 			config:    config,
 			cache:     NewCache(config.GetCacheTTL()),
 			readyOnce: true,
 		}
-		
+
 		// Pre-populate cache
 		testData := []byte(`{"test": "cached"}`)
 		app.cache.Set("/.well-known/openid-configuration", testData)
-		
+
 		req := httptest.NewRequest("GET", "/.well-known/openid-configuration", nil)
 		w := httptest.NewRecorder()
-		
+
 		app.HandleOIDCDiscovery(w, req)
-		
+
 		if w.Code != http.StatusOK {
 			t.Errorf("Expected status 200, got %d", w.Code)
 		}

@@ -10,9 +10,9 @@ func TestLoadConfig(t *testing.T) {
 	t.Run("Default values", func(t *testing.T) {
 		// Clear env vars
 		os.Clearenv()
-		
+
 		config := LoadConfig()
-		
+
 		if config.ListenAddr != "0.0.0.0" {
 			t.Errorf("Expected ListenAddr 0.0.0.0, got %s", config.ListenAddr)
 		}
@@ -42,9 +42,9 @@ func TestLoadConfig(t *testing.T) {
 		os.Setenv("CACHE_TTL_SECONDS", "120")
 		os.Setenv("PRETTY_PRINT_JSON", "false")
 		os.Setenv("LOG_LEVEL", "debug")
-		
+
 		config := LoadConfig()
-		
+
 		if config.ListenAddr != "127.0.0.1" {
 			t.Errorf("Expected ListenAddr 127.0.0.1, got %s", config.ListenAddr)
 		}
@@ -72,9 +72,9 @@ func TestLoadConfig(t *testing.T) {
 		os.Clearenv()
 		os.Setenv("CACHE_TTL_SECONDS", "120")
 		os.Setenv("UPSTREAM_TIMEOUT_SECONDS", "10")
-		
+
 		config := LoadConfig()
-		
+
 		if config.GetCacheTTL() != 120*time.Second {
 			t.Errorf("Expected cache TTL 120s, got %v", config.GetCacheTTL())
 		}
@@ -87,9 +87,9 @@ func TestLoadConfig(t *testing.T) {
 		os.Clearenv()
 		os.Setenv("CACHE_TTL_SECONDS", "invalid")
 		os.Setenv("UPSTREAM_TIMEOUT_SECONDS", "not-a-number")
-		
+
 		config := LoadConfig()
-		
+
 		if config.CacheTTLSeconds != 60 {
 			t.Errorf("Expected default CacheTTLSeconds 60, got %d", config.CacheTTLSeconds)
 		}
@@ -101,9 +101,9 @@ func TestLoadConfig(t *testing.T) {
 	t.Run("Invalid boolean falls back to default", func(t *testing.T) {
 		os.Clearenv()
 		os.Setenv("PRETTY_PRINT_JSON", "not-a-bool")
-		
+
 		config := LoadConfig()
-		
+
 		if !config.PrettyPrintJSON {
 			t.Error("Expected default PrettyPrintJSON to be true")
 		}
