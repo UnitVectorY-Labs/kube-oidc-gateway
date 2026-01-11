@@ -1,6 +1,6 @@
 # kube-oidc-gateway
 
-A lightweight in-cluster HTTP service that exposes Kubernetes API server OIDC discovery and JWKS endpoints with in-memory caching. This enables external systems (such as workload identity integrations) to access these endpoints without requiring anonymous authentication to be enabled on the Kubernetes API server.
+A reverse proxy that exposes OIDC discovery and JWKS endpoints with lightweight in-memory caching so external systems can configure workload identity without requiring anonymous authentication on the Kubernetes API server.
 
 ## Overview
 
@@ -154,8 +154,3 @@ go build -o kube-oidc-gateway .
 ```bash
 docker build -t kube-oidc-gateway:latest .
 ```
-
-## License
-
-See [LICENSE](LICENSE) file.
-
