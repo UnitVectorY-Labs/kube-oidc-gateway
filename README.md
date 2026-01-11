@@ -31,7 +31,7 @@ All other paths return `404 Not Found`.
 ### Query the OIDC discovery endpoint
 
 ```bash
-curl http://kube-oidc-gateway/. well-known/openid-configuration
+curl http://kube-oidc-gateway/.well-known/openid-configuration
 ```
 
 ### Query the JWKS endpoint
