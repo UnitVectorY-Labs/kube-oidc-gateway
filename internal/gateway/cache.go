@@ -8,6 +8,7 @@ import (
 // CacheEntry represents a cached response
 type CacheEntry struct {
 	Body      []byte
+	ETag      string
 	ExpiresAt time.Time
 }
 
@@ -27,42 +28,43 @@ func NewCache(ttl time.Duration) *Cache {
 }
 
 // Get retrieves a cached entry if it exists and is not expired
-func (c *Cache) Get(key string) ([]byte, bool) {
+func (c *Cache) Get(key string) (body []byte, etag string, found bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
 	entry, exists := c.entries[key]
 	if !exists {
-		return nil, false
+		return nil, "", false
 	}
 
 	if time.Now().After(entry.ExpiresAt) {
-		return nil, false
+		return nil, "", false
 	}
 
-	return entry.Body, true
+	return entry.Body, entry.ETag, true
 }
 
 // GetStale retrieves a cached entry even if expired (for stale-on-error)
-func (c *Cache) GetStale(key string) ([]byte, bool) {
+func (c *Cache) GetStale(key string) (body []byte, etag string, found bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
 	entry, exists := c.entries[key]
 	if !exists {
-		return nil, false
+		return nil, "", false
 	}
 
-	return entry.Body, true
+	return entry.Body, entry.ETag, true
 }
 
 // Set stores a value in the cache with TTL
-func (c *Cache) Set(key string, body []byte) {
+func (c *Cache) Set(key string, body []byte, etag string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	c.entries[key] = &CacheEntry{
 		Body:      body,
+		ETag:      etag,
 		ExpiresAt: time.Now().Add(c.ttl),
 	}
 }

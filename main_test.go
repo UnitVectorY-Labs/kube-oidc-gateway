@@ -22,7 +22,6 @@ func TestServerTimeouts(t *testing.T) {
 			PrettyPrintJSON: false,
 		}
 
-		app := &gateway.App{}
 		mux := http.NewServeMux()
 		mux.HandleFunc("/test", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
@@ -51,9 +50,6 @@ func TestServerTimeouts(t *testing.T) {
 		if server.IdleTimeout != 120*time.Second {
 			t.Errorf("Expected IdleTimeout 120s, got %v", server.IdleTimeout)
 		}
-
-		// Clean up - don't need to start the server for this test
-		_ = app
 	})
 }
 

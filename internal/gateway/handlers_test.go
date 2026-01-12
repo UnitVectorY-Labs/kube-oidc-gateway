@@ -103,7 +103,8 @@ func TestCacheIntegration(t *testing.T) {
 
 		// Pre-populate cache
 		testData := []byte(`{"test": "cached"}`)
-		app.cache.Set("/.well-known/openid-configuration", testData)
+		testETag := `"cached-etag"`
+		app.cache.Set("/.well-known/openid-configuration", testData, testETag)
 
 		req := httptest.NewRequest("GET", "/.well-known/openid-configuration", nil)
 		w := httptest.NewRecorder()
@@ -118,6 +119,9 @@ func TestCacheIntegration(t *testing.T) {
 		}
 		if w.Header().Get("Content-Type") != "application/json" {
 			t.Errorf("Expected Content-Type application/json, got %s", w.Header().Get("Content-Type"))
+		}
+		if w.Header().Get("ETag") != testETag {
+			t.Errorf("Expected ETag %s, got %s", testETag, w.Header().Get("ETag"))
 		}
 	})
 
@@ -134,7 +138,8 @@ func TestCacheIntegration(t *testing.T) {
 
 		// Pre-populate cache
 		testData := []byte(`{"test": "etag"}`)
-		app.cache.Set("/.well-known/openid-configuration", testData)
+		testETag := `"test-etag"`
+		app.cache.Set("/.well-known/openid-configuration", testData, testETag)
 
 		req := httptest.NewRequest("GET", "/.well-known/openid-configuration", nil)
 		w := httptest.NewRecorder()
@@ -163,7 +168,8 @@ func TestCacheIntegration(t *testing.T) {
 		}
 
 		testData := []byte(`{"test": "same"}`)
-		app.cache.Set("/.well-known/openid-configuration", testData)
+		testETag := `"same-etag"`
+		app.cache.Set("/.well-known/openid-configuration", testData, testETag)
 
 		req1 := httptest.NewRequest("GET", "/.well-known/openid-configuration", nil)
 		w1 := httptest.NewRecorder()

@@ -68,10 +68,10 @@ func (a *App) handleCachedEndpoint(w http.ResponseWriter, r *http.Request, path 
 	}()
 
 	// Check cache first
-	if cached, found := a.cache.Get(path); found {
+	if cached, etag, found := a.cache.Get(path); found {
 		cacheHit = true
 		statusCode = http.StatusOK
-		a.writeJSONResponse(w, cached, statusCode)
+		a.writeJSONResponseWithETag(w, cached, etag, statusCode)
 		return
 	}
 
@@ -85,10 +85,10 @@ func (a *App) handleCachedEndpoint(w http.ResponseWriter, r *http.Request, path 
 		log.Printf("upstream_error: path=%s error=%v duration=%v", path, err, upstreamDuration)
 		
 		// Try to serve stale cache on error (stale-on-error)
-		if staleData, found := a.cache.GetStale(path); found {
+		if staleData, staleETag, found := a.cache.GetStale(path); found {
 			log.Printf("serving_stale_cache: path=%s", path)
 			statusCode = http.StatusOK
-			a.writeJSONResponse(w, staleData, statusCode)
+			a.writeJSONResponseWithETag(w, staleData, staleETag, statusCode)
 			return
 		}
 		
@@ -121,22 +121,22 @@ func (a *App) handleCachedEndpoint(w http.ResponseWriter, r *http.Request, path 
 		processedBody = body
 	}
 
-	// Store in cache
-	a.cache.Set(path, processedBody)
+	// Generate ETag for the content
+	hash := sha256.Sum256(processedBody)
+	etag := `"` + hex.EncodeToString(hash[:]) + `"`
+
+	// Store in cache with ETag
+	a.cache.Set(path, processedBody, etag)
 
 	// Return response
 	statusCode = http.StatusOK
-	a.writeJSONResponse(w, processedBody, statusCode)
+	a.writeJSONResponseWithETag(w, processedBody, etag, statusCode)
 
 	log.Printf("upstream_fetch: path=%s duration=%v", path, upstreamDuration)
 }
 
-// writeJSONResponse writes JSON response with cache headers and ETag
-func (a *App) writeJSONResponse(w http.ResponseWriter, body []byte, statusCode int) {
-	// Generate ETag based on content hash
-	hash := sha256.Sum256(body)
-	etag := `"` + hex.EncodeToString(hash[:]) + `"`
-	
+// writeJSONResponseWithETag writes JSON response with cache headers and ETag
+func (a *App) writeJSONResponseWithETag(w http.ResponseWriter, body []byte, etag string, statusCode int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%d", a.config.CacheTTLSeconds))
 	w.Header().Set("ETag", etag)
@@ -218,7 +218,11 @@ func (a *App) populateCache() error {
 			processedBody = prettyJSON
 		}
 
-		a.cache.Set(path, processedBody)
+		// Generate ETag
+		hash := sha256.Sum256(processedBody)
+		etag := `"` + hex.EncodeToString(hash[:]) + `"`
+
+		a.cache.Set(path, processedBody, etag)
 	}
 
 	return nil
