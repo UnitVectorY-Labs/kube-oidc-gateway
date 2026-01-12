@@ -183,7 +183,23 @@ func (a *App) populateCache() error {
 		if err != nil {
 			return err
 		}
-		a.cache.Set(path, body)
+
+		// Apply pretty-print processing if enabled
+		processedBody := body
+		if a.config.PrettyPrintJSON {
+			var jsonData interface{}
+			if err := json.Unmarshal(body, &jsonData); err != nil {
+				return fmt.Errorf("failed to parse JSON for %s: %w", path, err)
+			}
+
+			prettyJSON, err := json.MarshalIndent(jsonData, "", "  ")
+			if err != nil {
+				return fmt.Errorf("failed to format JSON for %s: %w", path, err)
+			}
+			processedBody = prettyJSON
+		}
+
+		a.cache.Set(path, processedBody)
 	}
 
 	return nil
