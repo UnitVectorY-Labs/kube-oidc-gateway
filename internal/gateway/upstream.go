@@ -1,12 +1,18 @@
 package gateway
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+)
+
+const (
+	// MaxResponseSize limits the response size from upstream to prevent memory issues
+	MaxResponseSize = 10 * 1024 * 1024 // 10 MB
 )
 
 // UpstreamClient handles requests to the Kubernetes API server
@@ -57,11 +63,11 @@ func NewUpstreamClient(config *Config) (*UpstreamClient, error) {
 	}, nil
 }
 
-// Fetch retrieves data from the upstream path
-func (u *UpstreamClient) Fetch(path string) ([]byte, error) {
+// Fetch retrieves data from the upstream path with context
+func (u *UpstreamClient) Fetch(ctx context.Context, path string) ([]byte, error) {
 	url := u.baseURL + path
 
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -79,7 +85,9 @@ func (u *UpstreamClient) Fetch(path string) ([]byte, error) {
 		return nil, fmt.Errorf("upstream returned status %d", resp.StatusCode)
 	}
 
-	body, err := io.ReadAll(resp.Body)
+	// Limit response size to prevent memory exhaustion
+	limitedReader := io.LimitReader(resp.Body, MaxResponseSize)
+	body, err := io.ReadAll(limitedReader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
@@ -90,6 +98,7 @@ func (u *UpstreamClient) Fetch(path string) ([]byte, error) {
 // HealthCheck performs a basic connectivity check to the upstream
 func (u *UpstreamClient) HealthCheck() error {
 	// Try to fetch the well-known configuration as a health check
-	_, err := u.Fetch("/.well-known/openid-configuration")
+	ctx := context.Background()
+	_, err := u.Fetch(ctx, "/.well-known/openid-configuration")
 	return err
 }

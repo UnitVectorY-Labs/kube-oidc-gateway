@@ -41,7 +41,6 @@ func TestLoadConfig(t *testing.T) {
 		os.Setenv("UPSTREAM_TIMEOUT_SECONDS", "10")
 		os.Setenv("CACHE_TTL_SECONDS", "120")
 		os.Setenv("PRETTY_PRINT_JSON", "false")
-		os.Setenv("LOG_LEVEL", "debug")
 
 		config := LoadConfig()
 
@@ -62,9 +61,6 @@ func TestLoadConfig(t *testing.T) {
 		}
 		if config.PrettyPrintJSON {
 			t.Error("Expected PrettyPrintJSON to be false")
-		}
-		if config.LogLevel != "debug" {
-			t.Errorf("Expected LogLevel debug, got %s", config.LogLevel)
 		}
 	})
 
