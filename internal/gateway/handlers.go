@@ -13,7 +13,6 @@ type App struct {
 	config         *Config
 	cache          *Cache
 	upstreamClient *UpstreamClient
-	readyOnce      bool
 }
 
 // NewApp creates a new application instance
@@ -29,7 +28,6 @@ func NewApp(config *Config) (*App, error) {
 		config:         config,
 		cache:          cache,
 		upstreamClient: upstreamClient,
-		readyOnce:      false,
 	}, nil
 }
 
@@ -117,11 +115,6 @@ func (a *App) handleCachedEndpoint(w http.ResponseWriter, r *http.Request, path 
 	// Store in cache
 	a.cache.Set(path, processedBody)
 
-	// Mark as ready after first successful fetch
-	if !a.readyOnce {
-		a.readyOnce = true
-	}
-
 	// Return response
 	statusCode = http.StatusOK
 	w.Header().Set("Content-Type", "application/json")
@@ -133,9 +126,16 @@ func (a *App) handleCachedEndpoint(w http.ResponseWriter, r *http.Request, path 
 }
 
 // HandleHealthz handles the /healthz endpoint
+// Liveness probe - fetches and caches both OIDC endpoints
 func (a *App) HandleHealthz(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if err := a.populateCache(); err != nil {
+		log.Printf("health check failed: %v", err)
+		http.Error(w, "Service Unhealthy", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -144,14 +144,15 @@ func (a *App) HandleHealthz(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleReadyz handles the /readyz endpoint
+// Readiness probe - fetches and caches both OIDC endpoints
 func (a *App) HandleReadyz(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	// Check if we've successfully fetched from upstream at least once
-	if !a.readyOnce {
+	if err := a.populateCache(); err != nil {
+		log.Printf("readiness check failed: %v", err)
 		http.Error(w, "Service Unavailable", http.StatusServiceUnavailable)
 		return
 	}
@@ -164,4 +165,26 @@ func (a *App) HandleReadyz(w http.ResponseWriter, r *http.Request) {
 func (a *App) HandleNotFound(w http.ResponseWriter, r *http.Request) {
 	log.Printf("path=%s status=404 method=%s", r.URL.Path, r.Method)
 	http.Error(w, "Not Found", http.StatusNotFound)
+}
+
+// populateCache fetches and caches both OIDC endpoints
+func (a *App) populateCache() error {
+	if a.upstreamClient == nil {
+		return fmt.Errorf("upstream client not configured")
+	}
+
+	paths := []string{
+		"/.well-known/openid-configuration",
+		"/openid/v1/jwks",
+	}
+
+	for _, path := range paths {
+		body, err := a.upstreamClient.Fetch(path)
+		if err != nil {
+			return err
+		}
+		a.cache.Set(path, body)
+	}
+
+	return nil
 }

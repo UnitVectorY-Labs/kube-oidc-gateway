@@ -14,22 +14,19 @@ func TestHandlers(t *testing.T) {
 	}
 
 	app := &App{
-		config:    config,
-		cache:     NewCache(config.GetCacheTTL()),
-		readyOnce: true, // Mark as ready for tests
+		config: config,
+		cache:  NewCache(config.GetCacheTTL()),
 	}
 
-	t.Run("HandleHealthz returns 200", func(t *testing.T) {
+	t.Run("HandleHealthz returns 503 without upstream", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/healthz", nil)
 		w := httptest.NewRecorder()
 
 		app.HandleHealthz(w, req)
 
-		if w.Code != http.StatusOK {
-			t.Errorf("Expected status 200, got %d", w.Code)
-		}
-		if w.Body.String() != "OK" {
-			t.Errorf("Expected body 'OK', got %s", w.Body.String())
+		// Without a mock upstream, healthz will fail
+		if w.Code != http.StatusServiceUnavailable {
+			t.Errorf("Expected status 503 without upstream, got %d", w.Code)
 		}
 	})
 
@@ -44,29 +41,13 @@ func TestHandlers(t *testing.T) {
 		}
 	})
 
-	t.Run("HandleReadyz returns 200 when ready", func(t *testing.T) {
+	t.Run("HandleReadyz returns 503 when upstream unavailable", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/readyz", nil)
 		w := httptest.NewRecorder()
 
 		app.HandleReadyz(w, req)
 
-		if w.Code != http.StatusOK {
-			t.Errorf("Expected status 200, got %d", w.Code)
-		}
-	})
-
-	t.Run("HandleReadyz returns 503 when not ready", func(t *testing.T) {
-		notReadyApp := &App{
-			config:    config,
-			cache:     NewCache(config.GetCacheTTL()),
-			readyOnce: false, // Not ready
-		}
-
-		req := httptest.NewRequest("GET", "/readyz", nil)
-		w := httptest.NewRecorder()
-
-		notReadyApp.HandleReadyz(w, req)
-
+		// Without a mock upstream, readyz will fail
 		if w.Code != http.StatusServiceUnavailable {
 			t.Errorf("Expected status 503, got %d", w.Code)
 		}
@@ -116,9 +97,8 @@ func TestCacheIntegration(t *testing.T) {
 		}
 
 		app := &App{
-			config:    config,
-			cache:     NewCache(config.GetCacheTTL()),
-			readyOnce: true,
+			config: config,
+			cache:  NewCache(config.GetCacheTTL()),
 		}
 
 		// Pre-populate cache
