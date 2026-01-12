@@ -43,6 +43,19 @@ func (c *Cache) Get(key string) ([]byte, bool) {
 	return entry.Body, true
 }
 
+// GetStale retrieves a cached entry even if expired (for stale-on-error)
+func (c *Cache) GetStale(key string) ([]byte, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	entry, exists := c.entries[key]
+	if !exists {
+		return nil, false
+	}
+
+	return entry.Body, true
+}
+
 // Set stores a value in the cache with TTL
 func (c *Cache) Set(key string, body []byte) {
 	c.mu.Lock()

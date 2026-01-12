@@ -1,10 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/UnitVectorY-Labs/kube-oidc-gateway/internal/gateway"
 )
@@ -41,12 +45,50 @@ func main() {
 	// Catch-all for 404
 	mux.HandleFunc("/", app.HandleNotFound)
 
-	// Start server
+	// Create HTTP server with timeouts
 	addr := fmt.Sprintf("%s:%s", config.ListenAddr, config.ListenPort)
-	log.Printf("Listening on %s", addr)
+	server := &http.Server{
+		Addr:              addr,
+		Handler:           mux,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       120 * time.Second,
+	}
 
-	if err := http.ListenAndServe(addr, mux); err != nil {
+	// Start server in a goroutine
+	serverErrors := make(chan error, 1)
+	go func() {
+		log.Printf("Listening on %s", addr)
+		serverErrors <- server.ListenAndServe()
+	}()
+
+	// Listen for shutdown signals
+	shutdown := make(chan os.Signal, 1)
+	signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
+
+	// Block until a signal is received or server error
+	select {
+	case err := <-serverErrors:
 		log.Printf("Server error: %v", err)
 		os.Exit(1)
+	case sig := <-shutdown:
+		log.Printf("Received shutdown signal: %v. Starting graceful shutdown...", sig)
+
+		// Give outstanding requests a deadline for completion
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		// Perform graceful shutdown
+		if err := server.Shutdown(ctx); err != nil {
+			log.Printf("Graceful shutdown failed: %v", err)
+			// Force close
+			if err := server.Close(); err != nil {
+				log.Printf("Failed to close server: %v", err)
+			}
+			os.Exit(1)
+		}
+
+		log.Printf("Graceful shutdown completed")
 	}
 }

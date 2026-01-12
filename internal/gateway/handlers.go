@@ -1,6 +1,9 @@
 package gateway
 
 import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -68,21 +71,27 @@ func (a *App) handleCachedEndpoint(w http.ResponseWriter, r *http.Request, path 
 	if cached, found := a.cache.Get(path); found {
 		cacheHit = true
 		statusCode = http.StatusOK
-		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%d", a.config.CacheTTLSeconds))
-		w.WriteHeader(statusCode)
-		w.Write(cached)
+		a.writeJSONResponse(w, cached, statusCode)
 		return
 	}
 
 	// Cache miss - fetch from upstream
 	cacheHit = false
 	upstreamStart := time.Now()
-	body, err := a.upstreamClient.Fetch(path)
+	body, err := a.upstreamClient.Fetch(r.Context(), path)
 	upstreamDuration := time.Since(upstreamStart)
 
 	if err != nil {
 		log.Printf("upstream_error: path=%s error=%v duration=%v", path, err, upstreamDuration)
+		
+		// Try to serve stale cache on error (stale-on-error)
+		if staleData, found := a.cache.GetStale(path); found {
+			log.Printf("serving_stale_cache: path=%s", path)
+			statusCode = http.StatusOK
+			a.writeJSONResponse(w, staleData, statusCode)
+			return
+		}
+		
 		statusCode = http.StatusBadGateway
 		http.Error(w, "Bad Gateway", statusCode)
 		return
@@ -117,12 +126,22 @@ func (a *App) handleCachedEndpoint(w http.ResponseWriter, r *http.Request, path 
 
 	// Return response
 	statusCode = http.StatusOK
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%d", a.config.CacheTTLSeconds))
-	w.WriteHeader(statusCode)
-	w.Write(processedBody)
+	a.writeJSONResponse(w, processedBody, statusCode)
 
 	log.Printf("upstream_fetch: path=%s duration=%v", path, upstreamDuration)
+}
+
+// writeJSONResponse writes JSON response with cache headers and ETag
+func (a *App) writeJSONResponse(w http.ResponseWriter, body []byte, statusCode int) {
+	// Generate ETag based on content hash
+	hash := sha256.Sum256(body)
+	etag := `"` + hex.EncodeToString(hash[:]) + `"`
+	
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%d", a.config.CacheTTLSeconds))
+	w.Header().Set("ETag", etag)
+	w.WriteHeader(statusCode)
+	w.Write(body)
 }
 
 // HandleHealthz handles the /healthz endpoint
@@ -179,7 +198,7 @@ func (a *App) populateCache() error {
 	}
 
 	for _, path := range paths {
-		body, err := a.upstreamClient.Fetch(path)
+		body, err := a.upstreamClient.Fetch(context.Background(), path)
 		if err != nil {
 			return err
 		}

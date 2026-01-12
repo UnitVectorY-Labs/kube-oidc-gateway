@@ -69,4 +69,37 @@ func TestCache(t *testing.T) {
 			t.Errorf("Key2: expected %s, got %s", data2, result2)
 		}
 	})
+
+	t.Run("GetStale returns expired cache entries", func(t *testing.T) {
+		cache := NewCache(100 * time.Millisecond)
+		testData := []byte(`{"test": "stale"}`)
+
+		cache.Set("test-key", testData)
+
+		// Wait for expiration
+		time.Sleep(150 * time.Millisecond)
+
+		// Regular Get should fail
+		_, found := cache.Get("test-key")
+		if found {
+			t.Error("Expected cache miss after TTL expiration")
+		}
+
+		// GetStale should succeed
+		result, found := cache.GetStale("test-key")
+		if !found {
+			t.Error("Expected GetStale to return expired entry")
+		}
+		if string(result) != string(testData) {
+			t.Errorf("Expected %s, got %s", testData, result)
+		}
+	})
+
+	t.Run("GetStale returns false for non-existent keys", func(t *testing.T) {
+		cache := NewCache(60 * time.Second)
+		_, found := cache.GetStale("non-existent")
+		if found {
+			t.Error("Expected GetStale to return false for non-existent key")
+		}
+	})
 }

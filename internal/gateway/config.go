@@ -14,7 +14,6 @@ type Config struct {
 	UpstreamTimeoutSeconds int
 	CacheTTLSeconds        int
 	PrettyPrintJSON        bool
-	LogLevel               string
 	SATokenPath            string
 	SACACertPath           string
 }
@@ -28,7 +27,6 @@ func LoadConfig() *Config {
 		UpstreamTimeoutSeconds: getEnvAsInt("UPSTREAM_TIMEOUT_SECONDS", 5),
 		CacheTTLSeconds:        getEnvAsInt("CACHE_TTL_SECONDS", 60),
 		PrettyPrintJSON:        getEnvAsBool("PRETTY_PRINT_JSON", true),
-		LogLevel:               getEnv("LOG_LEVEL", "info"),
 		SATokenPath:            getEnv("SA_TOKEN_PATH", "/var/run/secrets/kubernetes.io/serviceaccount/token"),
 		SACACertPath:           getEnv("SA_CA_CERT_PATH", "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"),
 	}

@@ -120,4 +120,63 @@ func TestCacheIntegration(t *testing.T) {
 			t.Errorf("Expected Content-Type application/json, got %s", w.Header().Get("Content-Type"))
 		}
 	})
+
+	t.Run("Cache response includes ETag header", func(t *testing.T) {
+		config := &Config{
+			CacheTTLSeconds: 60,
+			PrettyPrintJSON: false,
+		}
+
+		app := &App{
+			config: config,
+			cache:  NewCache(config.GetCacheTTL()),
+		}
+
+		// Pre-populate cache
+		testData := []byte(`{"test": "etag"}`)
+		app.cache.Set("/.well-known/openid-configuration", testData)
+
+		req := httptest.NewRequest("GET", "/.well-known/openid-configuration", nil)
+		w := httptest.NewRecorder()
+
+		app.HandleOIDCDiscovery(w, req)
+
+		etag := w.Header().Get("ETag")
+		if etag == "" {
+			t.Error("Expected ETag header to be set")
+		}
+		// ETag should be in quoted format
+		if len(etag) < 3 || etag[0] != '"' || etag[len(etag)-1] != '"' {
+			t.Errorf("Expected ETag to be quoted, got %s", etag)
+		}
+	})
+
+	t.Run("Same content produces same ETag", func(t *testing.T) {
+		config := &Config{
+			CacheTTLSeconds: 60,
+			PrettyPrintJSON: false,
+		}
+
+		app := &App{
+			config: config,
+			cache:  NewCache(config.GetCacheTTL()),
+		}
+
+		testData := []byte(`{"test": "same"}`)
+		app.cache.Set("/.well-known/openid-configuration", testData)
+
+		req1 := httptest.NewRequest("GET", "/.well-known/openid-configuration", nil)
+		w1 := httptest.NewRecorder()
+		app.HandleOIDCDiscovery(w1, req1)
+		etag1 := w1.Header().Get("ETag")
+
+		req2 := httptest.NewRequest("GET", "/.well-known/openid-configuration", nil)
+		w2 := httptest.NewRecorder()
+		app.HandleOIDCDiscovery(w2, req2)
+		etag2 := w2.Header().Get("ETag")
+
+		if etag1 != etag2 {
+			t.Errorf("Expected same ETag for same content, got %s and %s", etag1, etag2)
+		}
+	})
 }
