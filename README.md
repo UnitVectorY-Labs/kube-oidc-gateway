@@ -58,7 +58,6 @@ All configuration is done via environment variables with safe defaults for in-cl
 | `UPSTREAM_TIMEOUT_SECONDS` | int | `5` | Timeout for upstream HTTP calls |
 | `CACHE_TTL_SECONDS` | int | `60` | In-memory cache TTL in seconds |
 | `PRETTY_PRINT_JSON` | bool | `true` | Pretty-print JSON responses |
-| `LOG_LEVEL` | string | `info` | Logging verbosity |
 | `SA_TOKEN_PATH` | string | `/var/run/secrets/kubernetes.io/serviceaccount/token` | ServiceAccount token path |
 | `SA_CA_CERT_PATH` | string | `/var/run/secrets/kubernetes.io/serviceaccount/ca.crt` | ServiceAccount CA certificate path |
 
