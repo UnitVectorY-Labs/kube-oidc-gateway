@@ -1,3 +1,5 @@
+[![GitHub release](https://img.shields.io/github/release/UnitVectorY-Labs/kube-oidc-gateway.svg)](https://github.com/UnitVectorY-Labs/kube-oidc-gateway/releases/latest) [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT) [![Active](https://img.shields.io/badge/Status-Active-green)](https://guide.unitvectorylabs.com/bestpractices/status/#active)
+
 # kube-oidc-gateway
 
 A reverse proxy that exposes OIDC discovery and JWKS endpoints with lightweight in-memory caching so external systems can configure workload identity without requiring anonymous authentication on the Kubernetes API server.
