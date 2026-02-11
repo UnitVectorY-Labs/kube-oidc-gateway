@@ -7,13 +7,29 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"syscall"
 	"time"
 
 	"github.com/UnitVectorY-Labs/kube-oidc-gateway/internal/gateway"
 )
 
+// Version is the application version, injected at build time via ldflags
+var Version = "dev"
+
 func main() {
+	// Set the build version from the build info if not set by the build system
+	if Version == "dev" || Version == "" {
+		if bi, ok := debug.ReadBuildInfo(); ok {
+			if bi.Main.Version != "" && bi.Main.Version != "(devel)" {
+				Version = bi.Main.Version
+			}
+		}
+	}
+
+	// Log the version
+	log.Printf("kube-oidc-gateway version: %s", Version)
+
 	// Load configuration
 	config := gateway.LoadConfig()
 
