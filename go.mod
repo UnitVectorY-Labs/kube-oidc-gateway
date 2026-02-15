@@ -1,3 +1,3 @@
 module github.com/UnitVectorY-Labs/kube-oidc-gateway
 
-go 1.25.7 // GOVERSION
+go 1.26.0 // GOVERSION
