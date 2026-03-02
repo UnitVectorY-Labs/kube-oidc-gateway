@@ -28,6 +28,9 @@ func TestLoadConfig(t *testing.T) {
 		if config.CacheTTLSeconds != 60 {
 			t.Errorf("Expected CacheTTLSeconds 60, got %d", config.CacheTTLSeconds)
 		}
+		if config.ClientCacheTTLSeconds != 3600 {
+			t.Errorf("Expected ClientCacheTTLSeconds 3600, got %d", config.ClientCacheTTLSeconds)
+		}
 		if !config.PrettyPrintJSON {
 			t.Error("Expected PrettyPrintJSON to be true by default")
 		}
@@ -40,6 +43,7 @@ func TestLoadConfig(t *testing.T) {
 		os.Setenv("UPSTREAM_HOST", "https://custom-api-server")
 		os.Setenv("UPSTREAM_TIMEOUT_SECONDS", "10")
 		os.Setenv("CACHE_TTL_SECONDS", "120")
+		os.Setenv("CLIENT_CACHE_TTL_SECONDS", "7200")
 		os.Setenv("PRETTY_PRINT_JSON", "false")
 
 		config := LoadConfig()
@@ -59,6 +63,9 @@ func TestLoadConfig(t *testing.T) {
 		if config.CacheTTLSeconds != 120 {
 			t.Errorf("Expected CacheTTLSeconds 120, got %d", config.CacheTTLSeconds)
 		}
+		if config.ClientCacheTTLSeconds != 7200 {
+			t.Errorf("Expected ClientCacheTTLSeconds 7200, got %d", config.ClientCacheTTLSeconds)
+		}
 		if config.PrettyPrintJSON {
 			t.Error("Expected PrettyPrintJSON to be false")
 		}
@@ -68,6 +75,7 @@ func TestLoadConfig(t *testing.T) {
 		os.Clearenv()
 		os.Setenv("CACHE_TTL_SECONDS", "120")
 		os.Setenv("UPSTREAM_TIMEOUT_SECONDS", "10")
+		os.Setenv("CLIENT_CACHE_TTL_SECONDS", "1800")
 
 		config := LoadConfig()
 
@@ -76,6 +84,9 @@ func TestLoadConfig(t *testing.T) {
 		}
 		if config.GetUpstreamTimeout() != 10*time.Second {
 			t.Errorf("Expected upstream timeout 10s, got %v", config.GetUpstreamTimeout())
+		}
+		if config.GetClientCacheTTL() != 1800*time.Second {
+			t.Errorf("Expected client cache TTL 1800s, got %v", config.GetClientCacheTTL())
 		}
 	})
 

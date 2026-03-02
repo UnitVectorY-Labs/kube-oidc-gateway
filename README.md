@@ -85,6 +85,7 @@ All configuration is done via environment variables with safe defaults for in-cl
 | `UPSTREAM_HOST` | string | `https://kubernetes.default.svc` | Kubernetes API server base URL |
 | `UPSTREAM_TIMEOUT_SECONDS` | int | `5` | Timeout for upstream HTTP calls |
 | `CACHE_TTL_SECONDS` | int | `60` | In-memory cache TTL in seconds |
+| `CLIENT_CACHE_TTL_SECONDS` | int | `3600` | `Cache-Control`/`Expires` TTL advertised to clients in seconds |
 | `PRETTY_PRINT_JSON` | bool | `true` | Pretty-print JSON responses |
 | `SA_TOKEN_PATH` | string | `/var/run/secrets/kubernetes.io/serviceaccount/token` | ServiceAccount token path |
 | `SA_CA_CERT_PATH` | string | `/var/run/secrets/kubernetes.io/serviceaccount/ca.crt` | ServiceAccount CA certificate path |
@@ -170,6 +171,8 @@ spec:
         env:
         - name: CACHE_TTL_SECONDS
           value: "60"
+        - name: CLIENT_CACHE_TTL_SECONDS
+          value: "3600"
         livenessProbe:
           httpGet:
             path: /healthz
@@ -303,7 +306,9 @@ path=/.well-known/openid-configuration status=200 cache_hit=true duration=1.234m
 
 ### Cache Behavior
 
-- Default TTL is 60 seconds
+- Default upstream cache TTL is 60 seconds
+- Default client cache TTL is 3600 seconds
+- Responses include `Cache-Control: public, max-age=...` and `Expires` headers based on `CLIENT_CACHE_TTL_SECONDS`
 - On cache miss, fetches from upstream and caches the result
 - On upstream failure with cached data, serves stale cache (stale-on-error)
 - ETags are generated for cache validation

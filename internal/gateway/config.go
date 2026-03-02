@@ -8,14 +8,15 @@ import (
 
 // Config holds all application configuration
 type Config struct {
-	ListenAddr             string
-	ListenPort             string
-	UpstreamHost           string
-	UpstreamTimeoutSeconds int
-	CacheTTLSeconds        int
-	PrettyPrintJSON        bool
-	SATokenPath            string
-	SACACertPath           string
+	ListenAddr              string
+	ListenPort              string
+	UpstreamHost            string
+	UpstreamTimeoutSeconds  int
+	CacheTTLSeconds         int
+	ClientCacheTTLSeconds   int
+	PrettyPrintJSON         bool
+	SATokenPath             string
+	SACACertPath            string
 }
 
 // LoadConfig loads configuration from environment variables with safe defaults
@@ -26,6 +27,7 @@ func LoadConfig() *Config {
 		UpstreamHost:           getEnv("UPSTREAM_HOST", "https://kubernetes.default.svc"),
 		UpstreamTimeoutSeconds: getEnvAsInt("UPSTREAM_TIMEOUT_SECONDS", 5),
 		CacheTTLSeconds:        getEnvAsInt("CACHE_TTL_SECONDS", 60),
+		ClientCacheTTLSeconds:  getEnvAsInt("CLIENT_CACHE_TTL_SECONDS", 3600),
 		PrettyPrintJSON:        getEnvAsBool("PRETTY_PRINT_JSON", true),
 		SATokenPath:            getEnv("SA_TOKEN_PATH", "/var/run/secrets/kubernetes.io/serviceaccount/token"),
 		SACACertPath:           getEnv("SA_CA_CERT_PATH", "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"),
@@ -35,6 +37,11 @@ func LoadConfig() *Config {
 // GetCacheTTL returns the cache TTL as a duration
 func (c *Config) GetCacheTTL() time.Duration {
 	return time.Duration(c.CacheTTLSeconds) * time.Second
+}
+
+// GetClientCacheTTL returns the client cache TTL as a duration
+func (c *Config) GetClientCacheTTL() time.Duration {
+	return time.Duration(c.ClientCacheTTLSeconds) * time.Second
 }
 
 // GetUpstreamTimeout returns the upstream timeout as a duration
