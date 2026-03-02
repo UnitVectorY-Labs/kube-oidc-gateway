@@ -9,8 +9,9 @@ import (
 func TestHandlers(t *testing.T) {
 	// Create a test app with mock upstream
 	config := &Config{
-		CacheTTLSeconds: 60,
-		PrettyPrintJSON: true,
+		CacheTTLSeconds:       60,
+		ClientCacheTTLSeconds: 3600,
+		PrettyPrintJSON:       true,
 	}
 
 	app := &App{
@@ -92,8 +93,9 @@ func TestHandlers(t *testing.T) {
 func TestCacheIntegration(t *testing.T) {
 	t.Run("Cache hit returns cached data", func(t *testing.T) {
 		config := &Config{
-			CacheTTLSeconds: 60,
-			PrettyPrintJSON: false,
+			CacheTTLSeconds:       60,
+			ClientCacheTTLSeconds: 3600,
+			PrettyPrintJSON:       false,
 		}
 
 		app := &App{
@@ -123,12 +125,19 @@ func TestCacheIntegration(t *testing.T) {
 		if w.Header().Get("ETag") != testETag {
 			t.Errorf("Expected ETag %s, got %s", testETag, w.Header().Get("ETag"))
 		}
+		if w.Header().Get("Cache-Control") != "public, max-age=3600" {
+			t.Errorf("Expected Cache-Control public, max-age=3600, got %s", w.Header().Get("Cache-Control"))
+		}
+		if w.Header().Get("Expires") == "" {
+			t.Error("Expected Expires header to be set")
+		}
 	})
 
 	t.Run("Cache response includes ETag header", func(t *testing.T) {
 		config := &Config{
-			CacheTTLSeconds: 60,
-			PrettyPrintJSON: false,
+			CacheTTLSeconds:       60,
+			ClientCacheTTLSeconds: 3600,
+			PrettyPrintJSON:       false,
 		}
 
 		app := &App{
@@ -158,8 +167,9 @@ func TestCacheIntegration(t *testing.T) {
 
 	t.Run("Same content produces same ETag", func(t *testing.T) {
 		config := &Config{
-			CacheTTLSeconds: 60,
-			PrettyPrintJSON: false,
+			CacheTTLSeconds:       60,
+			ClientCacheTTLSeconds: 3600,
+			PrettyPrintJSON:       false,
 		}
 
 		app := &App{
@@ -183,6 +193,35 @@ func TestCacheIntegration(t *testing.T) {
 
 		if etag1 != etag2 {
 			t.Errorf("Expected same ETag for same content, got %s and %s", etag1, etag2)
+		}
+	})
+
+	t.Run("Cache-Control uses ClientCacheTTLSeconds", func(t *testing.T) {
+		config := &Config{
+			CacheTTLSeconds:       60,
+			ClientCacheTTLSeconds: 7200,
+			PrettyPrintJSON:       false,
+		}
+
+		app := &App{
+			config: config,
+			cache:  NewCache(config.GetCacheTTL()),
+		}
+
+		testData := []byte(`{"test": "client-ttl"}`)
+		testETag := `"client-ttl-etag"`
+		app.cache.Set("/.well-known/openid-configuration", testData, testETag)
+
+		req := httptest.NewRequest("GET", "/.well-known/openid-configuration", nil)
+		w := httptest.NewRecorder()
+
+		app.HandleOIDCDiscovery(w, req)
+
+		if w.Header().Get("Cache-Control") != "public, max-age=7200" {
+			t.Errorf("Expected Cache-Control public, max-age=7200, got %s", w.Header().Get("Cache-Control"))
+		}
+		if w.Header().Get("Expires") == "" {
+			t.Error("Expected Expires header to be set")
 		}
 	})
 }

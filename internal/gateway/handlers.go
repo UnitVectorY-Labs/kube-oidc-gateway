@@ -137,8 +137,10 @@ func (a *App) handleCachedEndpoint(w http.ResponseWriter, r *http.Request, path 
 
 // writeJSONResponseWithETag writes JSON response with cache headers and ETag
 func (a *App) writeJSONResponseWithETag(w http.ResponseWriter, body []byte, etag string, statusCode int) {
+	expires := time.Now().UTC().Add(a.config.GetClientCacheTTL())
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%d", a.config.CacheTTLSeconds))
+	w.Header().Set("Cache-Control", fmt.Sprintf("public, max-age=%d", a.config.ClientCacheTTLSeconds))
+	w.Header().Set("Expires", expires.Format(http.TimeFormat))
 	w.Header().Set("ETag", etag)
 	w.WriteHeader(statusCode)
 	w.Write(body)
