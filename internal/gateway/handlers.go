@@ -83,7 +83,7 @@ func (a *App) handleCachedEndpoint(w http.ResponseWriter, r *http.Request, path 
 
 	if err != nil {
 		log.Printf("upstream_error: path=%s error=%v duration=%v", path, err, upstreamDuration)
-		
+
 		// Try to serve stale cache on error (stale-on-error)
 		if staleData, staleETag, found := a.cache.GetStale(path); found {
 			log.Printf("serving_stale_cache: path=%s", path)
@@ -91,7 +91,7 @@ func (a *App) handleCachedEndpoint(w http.ResponseWriter, r *http.Request, path 
 			a.writeJSONResponseWithETag(w, staleData, staleETag, statusCode)
 			return
 		}
-		
+
 		statusCode = http.StatusBadGateway
 		http.Error(w, "Bad Gateway", statusCode)
 		return
@@ -101,7 +101,7 @@ func (a *App) handleCachedEndpoint(w http.ResponseWriter, r *http.Request, path 
 	var processedBody []byte
 	if a.config.PrettyPrintJSON {
 		// Parse and pretty-print JSON
-		var jsonData interface{}
+		var jsonData any
 		if err := json.Unmarshal(body, &jsonData); err != nil {
 			log.Printf("json_parse_error: path=%s error=%v", path, err)
 			statusCode = http.StatusBadGateway
@@ -208,7 +208,7 @@ func (a *App) populateCache() error {
 		// Apply pretty-print processing if enabled
 		processedBody := body
 		if a.config.PrettyPrintJSON {
-			var jsonData interface{}
+			var jsonData any
 			if err := json.Unmarshal(body, &jsonData); err != nil {
 				return fmt.Errorf("failed to parse JSON for %s: %w", path, err)
 			}
