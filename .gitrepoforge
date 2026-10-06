@@ -1,0 +1,14 @@
+name: "kube-oidc-gateway"
+default_branch: "main"
+config:
+  description: "A reverse proxy that exposes Kubernetes OIDC discovery and JWKS endpoints with lightweight in-memory caching so external systems can configure workload identity federation without requiring anonymous authentication on the Kubernetes API server."
+  license: "MIT"
+  language: "go"
+  release: "docker-go"
+  release_github: true
+  status: "active"
+  justfile: false
+  codecov:
+    enabled: true
+  docs:
+    enabled: false
