@@ -225,3 +225,53 @@ func TestCacheIntegration(t *testing.T) {
 		}
 	})
 }
+
+func TestPrettyPrintUpstreamJSON(t *testing.T) {
+	tests := []struct {
+		name       string
+		body       string
+		pretty     bool
+		wantStatus int
+		wantBody   string
+	}{
+		{"formatted deterministically", `{"z":"<tag>","a":[null,true]}`, true, http.StatusOK, "{\n  \"a\": [\n    null,\n    true\n  ],\n  \"z\": \"\\u003ctag\\u003e\"\n}"},
+		{"duplicate names", `{"key":1,"key":2}`, true, http.StatusBadGateway, ""},
+		{"invalid UTF-8", "{\"key\":\"\xff\"}", true, http.StatusBadGateway, ""},
+		{"pass through when disabled", `{"key":1,"key":2}`, false, http.StatusOK, `{"key":1,"key":2}`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(tt.body)) }))
+			defer upstream.Close()
+			config := &Config{CacheTTLSeconds: 60, PrettyPrintJSON: tt.pretty}
+			newApp := func() *App {
+				return &App{config: config, cache: NewCache(config.GetCacheTTL()), upstreamClient: &UpstreamClient{httpClient: upstream.Client(), baseURL: upstream.URL}}
+			}
+			app := newApp()
+			w := httptest.NewRecorder()
+			app.HandleOIDCDiscovery(w, httptest.NewRequest(http.MethodGet, "/.well-known/openid-configuration", nil))
+			if w.Code != tt.wantStatus {
+				t.Fatalf("status = %d, want %d", w.Code, tt.wantStatus)
+			}
+			if tt.wantStatus == http.StatusOK && w.Body.String() != tt.wantBody {
+				t.Errorf("body = %q, want %q", w.Body.String(), tt.wantBody)
+			}
+			if _, _, found := app.cache.Get("/.well-known/openid-configuration"); found != (tt.wantStatus == http.StatusOK) {
+				t.Error("unexpected cache state")
+			}
+			app = newApp()
+			err := app.populateCache()
+			if (err == nil) != (tt.wantStatus == http.StatusOK) {
+				t.Fatalf("populateCache error = %v", err)
+			}
+			if err == nil {
+				for _, path := range []string{"/.well-known/openid-configuration", "/openid/v1/jwks"} {
+					body, _, found := app.cache.Get(path)
+					if !found || string(body) != tt.wantBody {
+						t.Errorf("cached %s = %q (found %v), want %q", path, body, found, tt.wantBody)
+					}
+				}
+			}
+		})
+	}
+}
