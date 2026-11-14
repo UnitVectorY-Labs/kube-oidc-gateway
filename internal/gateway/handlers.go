@@ -4,7 +4,8 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"log"
 	"net/http"
@@ -109,7 +110,7 @@ func (a *App) handleCachedEndpoint(w http.ResponseWriter, r *http.Request, path 
 			return
 		}
 
-		prettyJSON, err := json.MarshalIndent(jsonData, "", "  ")
+		prettyJSON, err := json.Marshal(jsonData, jsontext.WithIndent("  "), json.Deterministic(true), jsontext.EscapeForHTML(true), jsontext.EscapeForJS(true))
 		if err != nil {
 			log.Printf("json_marshal_error: path=%s error=%v", path, err)
 			statusCode = http.StatusInternalServerError
@@ -213,7 +214,7 @@ func (a *App) populateCache() error {
 				return fmt.Errorf("failed to parse JSON for %s: %w", path, err)
 			}
 
-			prettyJSON, err := json.MarshalIndent(jsonData, "", "  ")
+			prettyJSON, err := json.Marshal(jsonData, jsontext.WithIndent("  "), json.Deterministic(true), jsontext.EscapeForHTML(true), jsontext.EscapeForJS(true))
 			if err != nil {
 				return fmt.Errorf("failed to format JSON for %s: %w", path, err)
 			}
